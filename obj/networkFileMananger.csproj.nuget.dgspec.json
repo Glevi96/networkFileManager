@@ -41,6 +41,10 @@
             "Microsoft.Toolkit.Uwp.Notifications": {
               "target": "Package",
               "version": "[7.1.2, )"
+            },
+            "System.Management": {
+              "target": "Package",
+              "version": "[6.0.0, )"
             }
           },
           "imports": [

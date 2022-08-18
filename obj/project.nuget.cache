@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "YHo3ohNH/gnWp26d4TdEdHUYApoQ2TPcnocjTocCw8FoP19JsW3Gzc8VdiTFMg/p4kOZC79mZm13b+pSAkvlPw==",
+  "dgSpecHash": "NV6MFVJ1Uhhl//GstWEr/ww2SVtU8wXoBcqiLjKChHyopcDlMdHVnbnlKLjIO+A/wA63t+0uIgrf2asQ8wWZtw==",
   "success": true,
   "projectFilePath": "C:\\Users\\LGULYAS\\Desktop\\networkFileMananger\\networkFileMananger.csproj",
   "expectedPackageFiles": [
@@ -8,7 +8,9 @@
     "C:\\Users\\LGULYAS\\.nuget\\packages\\microsoft.toolkit.uwp.notifications\\7.1.2\\microsoft.toolkit.uwp.notifications.7.1.2.nupkg.sha512",
     "C:\\Users\\LGULYAS\\.nuget\\packages\\microsoft.win32.registry\\4.7.0\\microsoft.win32.registry.4.7.0.nupkg.sha512",
     "C:\\Users\\LGULYAS\\.nuget\\packages\\microsoft.win32.systemevents\\4.7.0\\microsoft.win32.systemevents.4.7.0.nupkg.sha512",
+    "C:\\Users\\LGULYAS\\.nuget\\packages\\system.codedom\\6.0.0\\system.codedom.6.0.0.nupkg.sha512",
     "C:\\Users\\LGULYAS\\.nuget\\packages\\system.drawing.common\\4.7.0\\system.drawing.common.4.7.0.nupkg.sha512",
+    "C:\\Users\\LGULYAS\\.nuget\\packages\\system.management\\6.0.0\\system.management.6.0.0.nupkg.sha512",
     "C:\\Users\\LGULYAS\\.nuget\\packages\\system.reflection.emit\\4.7.0\\system.reflection.emit.4.7.0.nupkg.sha512",
     "C:\\Users\\LGULYAS\\.nuget\\packages\\system.security.accesscontrol\\4.7.0\\system.security.accesscontrol.4.7.0.nupkg.sha512",
     "C:\\Users\\LGULYAS\\.nuget\\packages\\system.security.principal.windows\\4.7.0\\system.security.principal.windows.4.7.0.nupkg.sha512",

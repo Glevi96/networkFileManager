@@ -14,16 +14,67 @@ using System.Windows.Shapes;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.IO;
+using pathForFile = System.IO;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using Microsoft.Toolkit.Uwp.Notifications;
+using System.Management;
 
 namespace networkFileMananger
 {
     class Program
     {
-        public static string filePath = "";
-
+        public enum NET_API_STATUS : uint
+    {
+        NERR_Success = 0,
+        /// <summary>
+        /// This computer name is invalid.
+        /// </summary>
+        NERR_InvalidComputer = 2351,
+        /// <summary>
+        /// This operation is only allowed on the primary domain controller of the domain.
+        /// </summary>
+        NERR_NotPrimary = 2226,
+        /// <summary>
+        /// This operation is not allowed on this special group.
+        /// </summary>
+        NERR_SpeGroupOp = 2234,
+        /// <summary>
+        /// This operation is not allowed on the last administrative account.
+        /// </summary>
+        NERR_LastAdmin = 2452,
+        /// <summary>
+        /// The password parameter is invalid.
+        /// </summary>
+        NERR_BadPassword = 2203,
+        /// <summary>
+        /// The password does not meet the password policy requirements.
+        /// Check the minimum password length, password complexity and password history requirements.
+        /// </summary>
+        NERR_PasswordTooShort = 2245,
+        /// <summary>
+        /// The user name could not be found.
+        /// </summary>
+        NERR_UserNotFound = 2221,
+        ERROR_ACCESS_DENIED = 5,
+        ERROR_NOT_ENOUGH_MEMORY = 8,
+        ERROR_INVALID_PARAMETER = 87,
+        ERROR_INVALID_NAME = 123,
+        ERROR_INVALID_LEVEL = 124,
+        ERROR_MORE_DATA = 234 ,
+        ERROR_SESSION_CREDENTIAL_CONFLICT = 1219,
+        /// <summary>
+        /// The RPC server is not available. This error is returned if a remote computer was specified in
+        /// the lpServer parameter and the RPC server is not available.
+        /// </summary>
+        RPC_S_SERVER_UNAVAILABLE = 2147944122, // 0x800706BA
+        /// <summary>
+        /// Remote calls are not allowed for this process. This error is returned if a remote computer was
+        /// specified in the lpServer parameter and remote calls are not allowed for this process.
+        /// </summary>
+        RPC_E_REMOTE_DISABLED = 2147549468 // 0x8001011C
+    }
+    
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         struct FILE_INFO_3
         {
@@ -51,6 +102,13 @@ namespace networkFileMananger
         );
         [DllImport("Netapi32.dll", SetLastError=true)]
         static extern int NetApiBufferFree(IntPtr Buffer);
+        [DllImport("netapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        static extern int NetFileGetInfo(
+          string servername,
+          int fileid,
+          int level,
+          ref IntPtr bufptr
+        );
         static void CreateKey(){
             RegistryKey rootKey = Registry.CurrentUser;
             RegistryKey rkSubKey = Registry.CurrentUser.OpenSubKey("Software\\Classes\\*\\shell\\CloseNetWorkFile", false);
@@ -62,62 +120,112 @@ namespace networkFileMananger
                 rootKey.Close();
             }
         }
-        public static string[] splitPath;
-        static void splitThePath(){
-            splitPath = filePath.Split(@"\");
-            splitPath = splitPath.Where(x => !string.IsNullOrEmpty(x)).ToArray();
-            rebuildBasePath();
-        }
-        static void rebuildBasePath(){
-            for(int i = 1;i<splitPath.Count();i++){
-                basePath+=splitPath[i]+@"\";
+        public static string getPath(string uncPath){
+            try
+            {
+                // remove the "\\" from the UNC path and split the path
+                uncPath = uncPath.Replace(@"\\", "");
+                string[] uncParts = uncPath.Split(new char[] {'\\'}, StringSplitOptions.RemoveEmptyEntries);
+                if (uncParts.Length < 2)
+                    return "[UNRESOLVED UNC PATH: " + uncPath + "]";
+                // Get a connection to the server as found in the UNC path
+                ManagementScope scope = new ManagementScope(@"\\" + uncParts[0] + @"\root\cimv2");
+                // Query the server for the share name
+                SelectQuery query = new SelectQuery("Select * From Win32_Share Where Name = '" + uncParts[1] + "'");
+                ManagementObjectSearcher searcher = new ManagementObjectSearcher(scope, query);
+
+            // Get the path
+                string path = string.Empty;
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    path = obj["path"].ToString();
+                }
+
+            // Append any additional folders to the local path name
+                if (uncParts.Length > 2)
+                {
+                    for (int i = 2; i < uncParts.Length; i++)
+                    path = path.EndsWith(@"\") ? path + uncParts[i] : path + @"\" + uncParts[i];
+                }
+
+                return path;
             }
-            basePath = basePath.Remove(basePath.Length-1);
-            basePath = @"C:\"+basePath;
-            //System.Console.WriteLine(basePath+" is the rebuilt path for the file");
+            catch (Exception ex)
+            {
+                return "[ERROR RESOLVING UNC PATH: " + uncPath + ": "+ex.Message+"]";
+            }
         }
-        public static string basePath;
+        public static void ErrorDef(int err){
+            if(err!=0){
+                new ToastContentBuilder().AddArgument("action","viewConversation").AddArgument("conversationId",9813).AddText("Hiba!").AddText("A fájl nincs megnyitva a hálózaton.").Show();
+            }else{
+                new ToastContentBuilder().AddArgument("action","viewConversation").AddArgument("conversationId",9813).AddText("Siker!").AddText("A fájl sikeresen bezárva.").Show();
+            }
+        }
+        public static void FindUNCPaths(){
+            DriveInfo[] dis = DriveInfo.GetDrives();
+            foreach(DriveInfo di in dis){
+                if(di.DriveType == DriveType.Network){
+                    DirectoryInfo dir = di.RootDirectory;
+                    MessageBox.Show(GetUNCPath( dir.FullName.Substring(0,2)));
+                }
+            }
+        }
+        public static string GetUNCPath(string path)
+        {
+            if(path.StartsWith(@"\\")) 
+            {
+                return path;
+            }
+
+            ManagementObject mo = new ManagementObject();
+            mo.Path = new ManagementPath( String.Format( "Win32_LogicalDisk='{0}'", path ) );
+
+            // DriveType 4 = Network Drive
+            if(Convert.ToUInt32(mo["DriveType"]) == 4 )
+            {
+                return Convert.ToString(mo["ProviderName"]);
+            }
+            else 
+            {
+                return path;
+            }
+        }
         static void Main(string[] args)
         {
+            FindUNCPaths();
             CreateKey();
-            filePath=args[0];
-            splitThePath();
+            string filePath=args[0];
+            MessageBox.Show(filePath+" is the initial path for the file");
+            string fullPath = pathForFile.Path.GetDirectoryName(args[0]);
+            MessageBox.Show(fullPath+" is the path, after using GetDirectory method");
+            //MessageBox.Show(args[0]+" is the intial value for the path");
+            string basePath = getPath(filePath);
+            //MessageBox.Show(basePath+" is the new value for the path");
+            //splitThePath();
             const int MAX_PREFERRED_LENGTH = -1;
-            
             int dwReadEntries;
             int dwTotalEntries;
-            IntPtr pBuffer = IntPtr.Zero ;
+            IntPtr pBuffer = IntPtr.Zero;
             FILE_INFO_3 pCurrent = new FILE_INFO_3();
+            string serverName = "huszefsp01";
+            //int netStatus = NetFileGetInfo(serverName,fileId,3,pBuffer);
             
             //int dwStatus = NetFileEnum("HUVALBATESTVM02", null, null, 3, ref pBuffer, MAX_PREFERRED_LENGTH, out dwReadEntries, out dwTotalEntries, IntPtr.Zero );
             
-            string serverName = splitPath[0];
+            
             //string basePath = @"C:\ShareTest\testTXT.txt";
             
             string username = null;
-
             int dwStatus = NetFileEnum(serverName, basePath, username, 3, ref pBuffer, MAX_PREFERRED_LENGTH, out dwReadEntries, out dwTotalEntries, IntPtr.Zero );
-            if(dwReadEntries>1){
-                new ToastContentBuilder().AddArgument("action","viewConversation").AddArgument("conversationId",9813).AddText("Siker!").AddText("A fájl sikeresen bezárva.").Show();
-            }else{
-                new ToastContentBuilder().AddArgument("action","viewConversation").AddArgument("conversationId",9813).AddText("Hiba!").AddText("A fájl nincs megnyitva a hálózaton.").Show();
-            }
             if (dwStatus == 0) {
                 for (int dwIndex=0; dwIndex < dwReadEntries; dwIndex++) {
                     IntPtr iPtr = new IntPtr(pBuffer.ToInt64() + (dwIndex * Marshal.SizeOf(pCurrent)));
                     
-                    pCurrent = (FILE_INFO_3) Marshal.PtrToStructure(iPtr, typeof(FILE_INFO_3));
-
-                    /*
-                    Console.WriteLine("dwIndex={0}", dwIndex);
-                    Console.WriteLine("    id={0}", pCurrent.fi3_id );
-                    Console.WriteLine("    num_locks={0}", pCurrent.fi3_num_locks );
-                    Console.WriteLine("    pathname={0}", pCurrent.fi3_pathname );
-                    Console.WriteLine("    permission={0}", pCurrent.fi3_permission );
-                    Console.WriteLine("    username={0}", pCurrent.fi3_username  );
-                    */
-
-                     NetFileClose(serverName,pCurrent.fi3_id);
+                    pCurrent = (FILE_INFO_3)Marshal.PtrToStructure(iPtr, typeof(FILE_INFO_3));
+                    var thing = (NET_API_STATUS)NetFileClose(serverName,pCurrent.fi3_id);
+                    MessageBox.Show(thing.ToString());
+                    //string closer = Convert.ToString(NetFileClose(serverName,pCurrent.fi3_id));
                 }
                 NetApiBufferFree(pBuffer);
             }

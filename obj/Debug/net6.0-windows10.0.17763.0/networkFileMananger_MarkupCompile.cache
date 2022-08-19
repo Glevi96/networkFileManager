@@ -1,20 +1,20 @@
 ﻿networkFileMananger
-1.0.0.0
+
 
 winexe
 C#
 .cs
-c:\Users\LGULYAS\Desktop\networkFileMananger\obj\Debug\net6.0-windows10.0.17763.0\
+C:\Users\LGULYAS\Desktop\networkFileMananger\obj\Debug\net6.0-windows10.0.17763.0\
 networkFileMananger
 none
 false
 TRACE;DEBUG;NET;NET6_0;NETCOREAPP
-c:\Users\LGULYAS\Desktop\networkFileMananger\App.xaml
+C:\Users\LGULYAS\Desktop\networkFileMananger\App.xaml
 11407045341
 
-5-1083438351
+3-1233169557
 207-455724840
 MainWindow.xaml;
 
-True
+False
 

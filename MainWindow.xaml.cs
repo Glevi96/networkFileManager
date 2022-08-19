@@ -191,9 +191,16 @@ namespace networkFileMananger
                 return path;
             }
         }
+        static string getFilePath(string fPath){
+            if(fPath.StartsWith(@"\\")){
+                return fPath;
+            }else{
+                return null;
+            }
+        }
         static void Main(string[] args)
         {
-            FindUNCPaths();
+            //FindUNCPaths();
             CreateKey();
             string filePath=args[0];
             MessageBox.Show(filePath+" is the initial path for the file");
@@ -201,7 +208,7 @@ namespace networkFileMananger
             MessageBox.Show(fullPath+" is the path, after using GetDirectory method");
             //MessageBox.Show(args[0]+" is the intial value for the path");
             string basePath = getPath(filePath);
-            //MessageBox.Show(basePath+" is the new value for the path");
+            MessageBox.Show(basePath+" is the new value for the path");
             //splitThePath();
             const int MAX_PREFERRED_LENGTH = -1;
             int dwReadEntries;

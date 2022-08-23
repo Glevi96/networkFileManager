@@ -86,8 +86,35 @@ namespace networkFileMananger
             [MarshalAs(UnmanagedType.LPWStr)]
             public string fi3_username;
         }
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct SHARE_INFO_2
+        {
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string shi2_netname;
+            public uint shi2_type;
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string shi2_remark;
+            public uint shi2_permissions;
+            public uint shi2_max_uses;
+            public uint shi2_current_uses;
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string shi2_path;
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string shi2_passwd;
+        }
+
         [DllImport("netapi32.dll",SetLastError=true, CharSet = CharSet.Unicode)]
         public static extern int NetFileClose(string serverName, int fileId);
+        [DllImport("Netapi32.dll", CharSet=CharSet.Unicode)]
+        private static extern int NetShareEnum(
+            StringBuilder ServerName,
+            int level,
+            ref IntPtr bufPtr,
+            uint prefmaxlen,
+            ref int entriesread,
+            ref int totalentries,
+            ref int resume_handle
+        );
         [DllImport("netapi32.dll",SetLastError=true, CharSet = CharSet.Unicode)]
         static extern int NetFileEnum(
             string serverName,
@@ -195,34 +222,64 @@ namespace networkFileMananger
             if(fPath.StartsWith(@"\\")){
                 return fPath;
             }else{
-                return null;
+               /* DriveInfo[] dis = DriveInfo.GetDrives();
+                foreach(DriveInfo di in dis){
+                if(di.DriveType == DriveType.Network){
+                    DirectoryInfo dir = di.RootDirectory;
+                    MessageBox.Show(GetUNCPath( dir.FullName.Substring(0,2)));
+                    }
+                }*/
+                string temp = fPath.Substring(0,2);
+                ManagementObject mo = new ManagementObject();
+                mo.Path = new ManagementPath(string.Format("Win32_LogicalDisk='{0}'",temp));
+                if(Convert.ToInt32(mo["DriveType"]) == 4){
+                    return Convert.ToString(mo["ProviderName"]);
+                }else{
+                    return fPath;
+                }
             }
         }
+        const uint MAX_LENGTH = 0xFFFFFFFF;
         static void Main(string[] args)
         {
             //FindUNCPaths();
             CreateKey();
-            string filePath=args[0];
+            string temp = @"C:\Alba\Alex\img0.jpg";
+            //string basePath = getFilePath(temp);
+            /*string filePath=args[0];
             MessageBox.Show(filePath+" is the initial path for the file");
             string fullPath = pathForFile.Path.GetDirectoryName(args[0]);
-            MessageBox.Show(fullPath+" is the path, after using GetDirectory method");
+            MessageBox.Show(fullPath+" is the path, after using GetDirectory method");*/
             //MessageBox.Show(args[0]+" is the intial value for the path");
-            string basePath = getPath(filePath);
-            MessageBox.Show(basePath+" is the new value for the path");
+            //string basePath = getPath(filePath);
+            //MessageBox.Show(basePath+" is the new value for the path");
             //splitThePath();
             const int MAX_PREFERRED_LENGTH = -1;
             int dwReadEntries;
             int dwTotalEntries;
             IntPtr pBuffer = IntPtr.Zero;
             FILE_INFO_3 pCurrent = new FILE_INFO_3();
-            string serverName = "huszefsp01";
+            string serverName = "huvalbatestvm02";
             //int netStatus = NetFileGetInfo(serverName,fileId,3,pBuffer);
             
             //int dwStatus = NetFileEnum("HUVALBATESTVM02", null, null, 3, ref pBuffer, MAX_PREFERRED_LENGTH, out dwReadEntries, out dwTotalEntries, IntPtr.Zero );
-            
-            
-            //string basePath = @"C:\ShareTest\testTXT.txt";
-            
+            int readE = 0;
+            int totalE = 0;
+            int resume_handle = 0;
+            //TODO: Local Machine share handling!!
+            SHARE_INFO_2 shareCurrent = new SHARE_INFO_2();
+            string basePath = @"C:\temp\ShareTest\testTXT.txt";
+            StringBuilder serverBuilder = new StringBuilder(serverName);
+            //int nShareStatus = NetShareEnum(serverBuilder, 2, ref pBuffer, MAX_LENGTH, ref readE, ref totalE, ref resume_handle);
+            /*if(nShareStatus == 0){
+                for(int i =  0; i< readE;i++){
+                    var temper = 2*i* Marshal.SizeOf(pCurrent);
+                    IntPtr iPtr = new IntPtr(pBuffer.ToInt64() + temper);
+                    shareCurrent = (SHARE_INFO_2)Marshal.PtrToStructure(iPtr,typeof(SHARE_INFO_2));
+                    NetApiBufferFree(iPtr);
+
+                }
+            }*/
             string username = null;
             int dwStatus = NetFileEnum(serverName, basePath, username, 3, ref pBuffer, MAX_PREFERRED_LENGTH, out dwReadEntries, out dwTotalEntries, IntPtr.Zero );
             if (dwStatus == 0) {
